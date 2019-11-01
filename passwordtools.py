@@ -1,23 +1,26 @@
 
 
 alpha_lower_mask = "?l"
-alpha_lower = "abcdefghijklmnopqrstuvwxyz"
+alpha_lower_pool = "abcdefghijklmnopqrstuvwxyz"
+
 alpha_upper_mask = "?u"
-alpha_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+alpha_upper_pool = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
 numeric_mask = "?d"
-numeric = "0123456789"
+digit_pool = "0123456789"
+
 special_mask = "?s"
-special = "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~"
+special_pool = "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~"
 
 
 def get_mask(password):
     mask = []
     for char in password:
-        if alpha_lower.__contains__(char):
+        if alpha_lower_pool.__contains__(char):
             mask.append(alpha_lower_mask)
-        elif alpha_upper.__contains__(char):
+        elif alpha_upper_pool.__contains__(char):
             mask.append(alpha_upper_mask)
-        elif numeric.__contains__(char):
+        elif digit_pool.__contains__(char):
             mask.append(numeric_mask)
         else:
             mask.append(special_mask)
@@ -37,13 +40,13 @@ def _generate_character_replace_derivatives(password, character_index, character
 
 def _get_character_pool_from_mask_code(mask_code):
     if mask_code == alpha_lower_mask:
-        return alpha_lower
+        return alpha_lower_pool
     if mask_code == alpha_upper_mask:
-        return alpha_upper
+        return alpha_upper_pool
     if mask_code == numeric_mask:
-        return numeric
+        return digit_pool
     if mask_code == special_mask:
-        return special
+        return special_pool
     return ""
 
 
