@@ -1,3 +1,4 @@
+import time
 
 
 alpha_lower_mask = "?l"
@@ -203,7 +204,5 @@ class LeetGenerator:
             char = char_options[current_index]
             permutation_builder.append(char)
         self.__increment__()
-        permutation = "".join(permutation_builder)
-        print(permutation)
         return "".join(permutation_builder)
 

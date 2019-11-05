@@ -29,6 +29,7 @@ start_time = time.time()
 
 try:
     with open(params.potfile_name, "r") as potfile:
+        print("Importing passwords from potfile...")
         for line in potfile.readlines():
             line_split = line.strip().split(":")
             if len(line_split) < 2:
@@ -46,13 +47,19 @@ except IOError:
 
 used_password_set = set()
 for i in range(params.depth):
+    progress_prefix = "\rProcessing password set for depth " + str(i+1) + "... "
     new_password_set = set()
+    counter = 1
     for password in password_set:
+        sys.stdout.write(progress_prefix + str(counter) + "/" + str(len(password_set)))
+        sys.stdout.flush()
+        counter += 1
         new_derivative_set = passwordtools.get_all_derivatives(password) - used_password_set
         new_password_set.update(new_derivative_set)
         derivative_set.update(new_derivative_set)
     used_password_set.update(new_password_set)
     password_set = new_password_set
+    print()
 
 end_time = time.time()
 process_time = end_time - start_time
