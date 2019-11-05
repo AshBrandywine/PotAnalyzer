@@ -35,6 +35,8 @@ try:
             if len(line_split) < 2:
                 continue
             password = line_split[len(line_split)-1]
+            if len(password) == 0:
+                continue
             password_set.add(password)
             mask = passwordtools.get_mask(password)
             mask_key = "".join(mask)

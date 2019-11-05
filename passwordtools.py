@@ -160,7 +160,7 @@ class CascadeCounter:
 
 class LeetGenerator:
     def __init__(self, password):
-        self.has_next = True
+        self.has_next = False
         self.omni_mask = self.__getmask__(password)
         self.counter_list = []
         self.counter_head = None
@@ -169,6 +169,9 @@ class LeetGenerator:
             mask_chars = self.omni_mask[i]
             max_value = len(mask_chars) - 1
             self.__appendcounter__(max_value)
+            if max_value > 0:
+                self.has_next = True
+        self.__increment__()
 
     def __appendcounter__(self, max_value):
         counter = CascadeCounter(max_value)
