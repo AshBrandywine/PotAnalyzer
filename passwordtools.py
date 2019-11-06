@@ -1,4 +1,3 @@
-import time
 
 
 alpha_lower_mask = "?l"
