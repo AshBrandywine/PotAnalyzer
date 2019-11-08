@@ -29,7 +29,7 @@ if len(sys.argv) > 2:
 
 unique_derivatives_computed = 0
 start_time = time.time()
-with sqlite3.connect(":memory:") as db:
+with sqlite3.connect("") as db:
     db.execute("create table password_set (password text, unique(password))")
     db.execute("create table derivative_set (password text, unique(password))")
     db.execute("create table new_password_set (password text, unique(password))")
