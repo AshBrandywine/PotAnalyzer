@@ -9,7 +9,8 @@ class Parameters:
         self.display_help = False
         self.depth = 1
         self.derivative_output_name = "derivatives.txt"
-        self.mask_analysis_output_name = "masks.txt"
+        self.maskfile_output_name = "masks.hcmask"
+        self.analysis_output_name = "analysis.txt"
         if argument_input[1].startswith("-"):
             self.display_help = True
         else:
@@ -26,4 +27,5 @@ class Parameters:
                 self.depth = max(int(current_value), 1)
             elif current_argument in ("-o", "--output"):
                 self.derivative_output_name = current_value + "_derivatives.txt"
-                self.mask_analysis_output_name = current_value + "_masks.txt"
+                self.maskfile_output_name = current_value + "_masks.hcmask"
+                self.analysis_output_name = current_value + "_analysis.txt"
