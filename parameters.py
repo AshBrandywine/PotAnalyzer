@@ -2,8 +2,8 @@ import getopt
 
 
 class Parameters:
-    unix_options = "hd:o:"
-    gnu_options = ["help", "depth=", "output="]
+    unix_options = "hd:o:aw:"
+    gnu_options = ["help", "depth=", "output=", "analyze-only", "mask-weight-cutoff="]
 
     def __init__(self, argument_input):
         self.display_help = False
@@ -11,6 +11,8 @@ class Parameters:
         self.derivative_output_name = "derivatives.txt"
         self.maskfile_output_name = "masks.hcmask"
         self.analysis_output_name = "analysis.txt"
+        self.mask_weight_cutoff = 0.10
+        self.analyze_only = False
         if argument_input[1].startswith("-"):
             self.display_help = True
         else:
@@ -29,3 +31,7 @@ class Parameters:
                 self.derivative_output_name = current_value + "_derivatives.txt"
                 self.maskfile_output_name = current_value + "_masks.hcmask"
                 self.analysis_output_name = current_value + "_analysis.txt"
+            elif current_argument in ("-a", "--analyze-only"):
+                self.analyze_only = True
+            elif current_argument in ("-w", "--mask-weight-cutoff"):
+                self.mask_weight_cutoff = float(current_value)

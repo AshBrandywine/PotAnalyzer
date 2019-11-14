@@ -1,5 +1,6 @@
 import sys
 import time
+import math
 import sqlite3
 import parameters
 import passwordtools
@@ -7,7 +8,7 @@ import masktools
 
 
 def print_usage():
-    print("usage: " + sys.argv[0] + " /your/potfile/path [-d, --depth DEPTH] [-o, --output OUTPUT_NAME] [-h, --help]")
+    print("usage: " + sys.argv[0] + " /your/potfile/path [-d, --depth DEPTH] [-o, --output OUTPUT_NAME] [-a, --analyze-only] [-w, --mask-weight-cutoff CUTOFF] [-h, --help]")
 
 
 def print_progress(prefix_comment, completed, total):
@@ -42,6 +43,7 @@ with sqlite3.connect("") as db:
     db.execute("create table new_password_set (password text, unique(password))")
     db.commit()
     masks = {}
+    password_total = 0
     try:
         with open(params.potfile_name, "r") as potfile:
             print("Importing passwords from potfile...")
@@ -60,37 +62,45 @@ with sqlite3.connect("") as db:
                     masks[mask_key] = masks[mask_key] + 1
                 else:
                     masks[mask_key] = 1
+                password_total += 1
     except IOError:
         print("The provided pot file was invalid or could not be found.")
 
     print("Analyzing masks...")
     masks_ordered = [(v, k) for k, v in masks.items()]
     masks_ordered.sort(reverse=True)
-    mask_list = [i[1] for i in masks_ordered]
+    mask_list = []
+    mask_count_cutoff = math.ceil(float(password_total) * params.mask_weight_cutoff)
+    print("Mask weight cutoff: " + str(params.mask_weight_cutoff))
+    print("Masks must have this many occurrences in potfile to be included in mask processing: " + str(mask_count_cutoff))
+    for count_mask_pair in masks_ordered:
+        if count_mask_pair[0] < mask_count_cutoff:
+            break
+        mask_list.append(count_mask_pair[1])
     mask_derivatives = masktools.get_mask_derivatives(mask_list)
 
-    used_password_set = set()
-    for i in range(params.depth):
-        record_count = db.execute("select count(password) from password_set").fetchone()[0]
-        progress_prefix = "\rProcessing password set for depth " + str(i+1) + "... "
-        db.execute("delete from new_password_set")
-        db.commit()
-        counter = 1
-        cursor = db.execute("select password from password_set")
-        for row in cursor:
-            print_progress(progress_prefix, counter, record_count)
-            counter += 1
-            new_derivative_set = passwordtools.get_all_derivatives(row[0])
-            db.executemany("insert or ignore into new_password_set values (?)", iterate_set_as_tuples(new_derivative_set))
-        db.commit()
-        print("")
-        print("Aggregating results from depth " + str(i+1) + "...")
-        db.execute("insert or ignore into derivative_set(password) select password from new_password_set")
-        db.execute("delete from password_set")
-        db.execute("insert or ignore into password_set(password) select password from new_password_set")
-        db.commit()
-
-    unique_derivatives_computed = db.execute("select count(password) from derivative_set").fetchone()[0]
+    unique_derivatives_computed = 0
+    if not params.analyze_only:
+        for i in range(params.depth):
+            record_count = db.execute("select count(password) from password_set").fetchone()[0]
+            progress_prefix = "\rProcessing password set for depth " + str(i+1) + "... "
+            db.execute("delete from new_password_set")
+            db.commit()
+            counter = 1
+            cursor = db.execute("select password from password_set")
+            for row in cursor:
+                print_progress(progress_prefix, counter, record_count)
+                counter += 1
+                new_derivative_set = passwordtools.get_all_derivatives(row[0])
+                db.executemany("insert or ignore into new_password_set values (?)", iterate_set_as_tuples(new_derivative_set))
+            db.commit()
+            print("")
+            print("Aggregating results from depth " + str(i+1) + "...")
+            db.execute("insert or ignore into derivative_set(password) select password from new_password_set")
+            db.execute("delete from password_set")
+            db.execute("insert or ignore into password_set(password) select password from new_password_set")
+            db.commit()
+        unique_derivatives_computed = db.execute("select count(password) from derivative_set").fetchone()[0]
 
     print("Outputting results to disk...")
 
