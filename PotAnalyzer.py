@@ -1,5 +1,6 @@
 import sys
 import time
+from datetime import timedelta
 import math
 import sqlite3
 import parameters
@@ -11,10 +12,23 @@ def print_usage():
     print("usage: " + sys.argv[0] + " /your/potfile/path [-d, --depth DEPTH] [-o, --output OUTPUT_NAME] [-a, --analyze-only] [-w, --mask-weight-cutoff CUTOFF] [-h, --help]")
 
 
-def print_progress(prefix_comment, completed, total):
+def print_progress(prefix_comment, completed, total, time_left=None):
     percent = (float(completed) / float(total)) * 100
-    sys.stdout.write("%s %d/%d (%.2f%%)" % (prefix_comment, completed, total, percent))
+    if time_left is None or len(time_left) == 0:
+        sys.stdout.write("%s %d/%d (%.2f%%)" % (prefix_comment, completed, total, percent))
+    else:
+        sys.stdout.write("%s %d/%d (%.2f%%) Estimated time remaining: %s" % (prefix_comment, completed, total, percent, time_left))
     sys.stdout.flush()
+
+
+def get_estimated_time_remaining(percentage_complete, progress_start_time):
+    time_elapsed = time.time() - progress_start_time
+    if time_elapsed > 0:
+        completion_rate = percentage_complete / time_elapsed
+        remaining_percentage = 1.00 - percentage_complete
+        seconds_left = round(remaining_percentage / completion_rate)
+        return str(timedelta(seconds=seconds_left))
+    return "Unknown"
 
 
 def iterate_set_as_tuples(my_set):
@@ -88,8 +102,12 @@ with sqlite3.connect("") as db:
             db.commit()
             counter = 1
             cursor = db.execute("select password from password_set")
+            depth_start_time = time.time()
+            time_remaining_text = None
             for row in cursor:
-                print_progress(progress_prefix, counter, record_count)
+                if counter % 128 == 0:
+                    time_remaining_text = get_estimated_time_remaining(float(counter) / float(record_count), depth_start_time)
+                print_progress(progress_prefix, counter, record_count, time_remaining_text)
                 counter += 1
                 new_derivative_set = passwordtools.get_all_derivatives(row[0])
                 db.executemany("insert or ignore into new_password_set values (?)", iterate_set_as_tuples(new_derivative_set))
@@ -128,7 +146,7 @@ with sqlite3.connect("") as db:
 
 end_time = time.time()
 process_time = end_time - start_time
-print("Processing took %.4f seconds" % process_time)
+print("Processing took %s" % str(timedelta(seconds=process_time)))
 
 print("Unique derivatives computed: " + str(unique_derivatives_computed))
 print("Unique Masks discovered: " + str(len(masks)))
