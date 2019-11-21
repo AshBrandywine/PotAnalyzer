@@ -1,4 +1,5 @@
 import sys
+import shutil
 import time
 from datetime import timedelta
 import math
@@ -9,7 +10,7 @@ import masktools
 
 
 def print_usage():
-    print("usage: " + sys.argv[0] + " /your/potfile/path [-d, --depth DEPTH] [-o, --output OUTPUT_NAME] [-a, --analyze-only] [-w, --mask-weight-cutoff CUTOFF] [-h, --help]")
+    print("usage: " + sys.argv[0] + " /your/potfile/path [-d, --depth DEPTH] [-o, --output OUTPUT_NAME] [-a, --analyze-only] [-w, --mask-weight-cutoff CUTOFF] [-p, --previous-passwords PASSWORD_LIST] [-h, --help]")
 
 
 def print_progress(prefix_comment, completed, total, time_left=None):
@@ -53,11 +54,31 @@ unique_derivatives_computed = 0
 start_time = time.time()
 with sqlite3.connect("") as db:
     db.execute("create table password_set (password text, unique(password))")
+    db.execute("create table omission_set (password text, unique(password))")
     db.execute("create table derivative_set (password text, unique(password))")
     db.execute("create table new_password_set (password text, unique(password))")
     db.commit()
     masks = {}
     password_total = 0
+
+    if params.previous_passwords is not None and not params.analyze_only:
+        try:
+            with open(params.previous_passwords, "r") as previous_passwords:
+                print("Importing previous password file...")
+                for line in previous_passwords.readlines():
+                    line_split = line.strip().split(":")
+                    password = None
+                    if len(line_split) == 1:
+                        password = line_split[0]
+                    else:
+                        password = line_split[len(line_split)-1]
+                    if len(password) == 0:
+                        continue
+                    db.execute("insert or ignore into omission_set values (?)", (password,))
+                    db.commit()
+        except IOError:
+            print("The provided previous password file was invalid or could not be found.")
+
     try:
         with open(params.potfile_name, "r") as potfile:
             print("Importing passwords from potfile...")
@@ -67,6 +88,9 @@ with sqlite3.connect("") as db:
                     continue
                 password = line_split[len(line_split)-1]
                 if len(password) == 0:
+                    continue
+                cursor = db.execute("select * from omission_set where password = ?", (password,))
+                if cursor.rowcount > 0:
                     continue
                 db.execute("insert or ignore into password_set values (?)", (password,))
                 db.commit()
@@ -85,11 +109,13 @@ with sqlite3.connect("") as db:
     masks_ordered.sort(reverse=True)
     mask_list = []
     mask_count_cutoff = math.ceil(float(password_total) * params.mask_weight_cutoff)
-    print("Mask weight cutoff: " + str(params.mask_weight_cutoff))
-    print("Masks must have this many occurrences in potfile to be included in mask processing: " + str(mask_count_cutoff))
+    print("Mask cutoff: " + str(params.mask_weight_cutoff))
+    print("Most common masks for " + str(mask_count_cutoff) + " passwords will be processed.")
+    mask_process_password_count = 0
     for count_mask_pair in masks_ordered:
-        if count_mask_pair[0] < mask_count_cutoff:
+        if mask_process_password_count > mask_count_cutoff:
             break
+        mask_process_password_count += count_mask_pair[0]
         mask_list.append(count_mask_pair[1])
     mask_derivatives = masktools.get_mask_derivatives(mask_list)
 
@@ -122,13 +148,19 @@ with sqlite3.connect("") as db:
 
     print("Outputting results to disk...")
 
-    try:
-        with open(params.derivative_output_name, "w") as outfile:
-            cursor = db.execute("select password from derivative_set")
-            for row in cursor:
-                outfile.write(row[0] + "\n")
-    except IOError:
-        print("There was an issue writing the derivatives output.")
+    if not params.analyze_only:
+        try:
+            with open(params.derivative_output_name, "w") as outfile:
+                cursor = db.execute("select password from derivative_set")
+                for row in cursor:
+                    outfile.write(row[0] + "\n")
+        except IOError:
+            print("There was an issue writing the derivatives output.")
+
+        try:
+            shutil.copyfile(params.potfile_name, params.potfile_backup_name)
+        except IOError:
+            print("There was a problem producing the previous used password file")
 
     try:
         with open(params.maskfile_output_name, "w") as outfile:
@@ -150,6 +182,7 @@ print("Processing took %s" % str(timedelta(seconds=process_time)))
 
 print("Unique derivatives computed: " + str(unique_derivatives_computed))
 print("Unique Masks discovered: " + str(len(masks)))
+print(str(len(mask_derivatives)) + " mask derivatives created for .hcmask file")
 print("Results saved to '" + params.derivative_output_name + "' '" + params.maskfile_output_name + "' '" + params.analysis_output_name + "'")
 
 

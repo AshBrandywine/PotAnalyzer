@@ -2,8 +2,8 @@ import getopt
 
 
 class Parameters:
-    unix_options = "hd:o:aw:"
-    gnu_options = ["help", "depth=", "output=", "analyze-only", "mask-weight-cutoff="]
+    unix_options = "hd:o:aw:p:"
+    gnu_options = ["help", "depth=", "output=", "analyze-only", "mask-weight-cutoff=, previous-passwords="]
 
     def __init__(self, argument_input):
         self.display_help = False
@@ -11,7 +11,9 @@ class Parameters:
         self.derivative_output_name = "derivatives.txt"
         self.maskfile_output_name = "masks.hcmask"
         self.analysis_output_name = "analysis.txt"
-        self.mask_weight_cutoff = 0.10
+        self.potfile_backup_name = "processed.potfile"
+        self.previous_passwords = None
+        self.mask_weight_cutoff = 0.30
         self.analyze_only = False
         if argument_input[1].startswith("-"):
             self.display_help = True
@@ -31,7 +33,10 @@ class Parameters:
                 self.derivative_output_name = current_value + "_derivatives.txt"
                 self.maskfile_output_name = current_value + "_masks.hcmask"
                 self.analysis_output_name = current_value + "_analysis.txt"
+                self.potfile_backup_name = current_value + "_processed.potfile"
             elif current_argument in ("-a", "--analyze-only"):
                 self.analyze_only = True
             elif current_argument in ("-w", "--mask-weight-cutoff"):
                 self.mask_weight_cutoff = float(current_value)
+            elif current_argument in ("-p", "--previous-passwords"):
+                self.previous_passwords = current_value
