@@ -7,6 +7,7 @@ import sqlite3
 import parameters
 import passwordtools
 import masktools
+import passwordanalysis
 
 
 def print_usage():
@@ -59,6 +60,7 @@ with sqlite3.connect("") as db:
     db.execute("create table new_password_set (password text, unique(password))")
     db.commit()
     masks = {}
+    word_extractor = passwordanalysis.WordExtractor()
     password_total = 0
 
     if params.previous_passwords is not None and not params.analyze_only:
@@ -74,6 +76,7 @@ with sqlite3.connect("") as db:
                         password = line_split[len(line_split)-1]
                     if len(password) == 0:
                         continue
+
                     db.execute("insert or ignore into omission_set values (?)", (password,))
                     db.commit()
         except IOError:
@@ -92,7 +95,9 @@ with sqlite3.connect("") as db:
                 cursor = db.execute("select * from omission_set where password = ?", (password,))
                 if cursor.rowcount > 0:
                     continue
+                word_extractor.extract(password)
                 db.execute("insert or ignore into password_set values (?)", (password,))
+                db.execute("insert or ignore into derivative_set values (?)", (password,))
                 db.commit()
                 mask = passwordtools.get_mask(password)
                 mask_key = "".join(mask)
@@ -171,18 +176,33 @@ with sqlite3.connect("") as db:
 
     try:
         with open(params.analysis_output_name, "w") as outfile:
+            outfile.write("Common words in passwords:\n")
+            for word_tuple in word_extractor.get_ordered_common_words():
+                occurances = word_tuple[0]
+                word = word_tuple[1]
+                if occurances < 2:
+                    break
+                outfile.write(str(occurances) + " - " + word + "\n")
+            outfile.write("\nCommon password masks:\n")
             for mask_tuple in masks_ordered:
-                outfile.write(str(mask_tuple[0]) + " - " + str(mask_tuple[1]) + "\n")
+                occurances = mask_tuple[0]
+                mask = mask_tuple[1]
+                if occurances < 2:
+                    break
+                outfile.write(str(occurances) + " - " + mask + "\n")
     except IOError:
         print("There was an issue writing the analysis file")
 
 end_time = time.time()
+
+print("Results saved to '" + params.derivative_output_name + "' '" + params.maskfile_output_name + "' '" + params.analysis_output_name + "'")
+print("Potfile backup saved to '" + params.potfile_backup_name + "'")
+
 process_time = end_time - start_time
 print("Processing took %s" % str(timedelta(seconds=process_time)))
 
 print("Unique derivatives computed: " + str(unique_derivatives_computed))
 print("Unique Masks discovered: " + str(len(masks)))
 print(str(len(mask_derivatives)) + " mask derivatives created for .hcmask file")
-print("Results saved to '" + params.derivative_output_name + "' '" + params.maskfile_output_name + "' '" + params.analysis_output_name + "'")
 
 
