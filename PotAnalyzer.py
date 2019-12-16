@@ -179,17 +179,19 @@ with sqlite3.connect("") as db:
             outfile.write("Common words in passwords:\n")
             for word_tuple in word_extractor.get_ordered_common_words():
                 occurances = word_tuple[0]
-                word = word_tuple[1]
                 if occurances < 2:
                     break
-                outfile.write(str(occurances) + " - " + word + "\n")
+                word = word_tuple[1]
+                pct = (float(occurances) / float(password_total)) * 100.00
+                outfile.write("%s (%.2f%%) - %s\n" % (occurances, pct, word))
             outfile.write("\nCommon password masks:\n")
             for mask_tuple in masks_ordered:
                 occurances = mask_tuple[0]
-                mask = mask_tuple[1]
                 if occurances < 2:
                     break
-                outfile.write(str(occurances) + " - " + mask + "\n")
+                mask = mask_tuple[1]
+                pct = (float(occurances) / float(password_total)) * 100.00
+                outfile.write("%s (%.2f%%) - %s\n" % (occurances, pct, mask))
     except IOError:
         print("There was an issue writing the analysis file")
 
