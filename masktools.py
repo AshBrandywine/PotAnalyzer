@@ -17,6 +17,32 @@ recent_centuries = ("19", "20")
 famous_pre_1900_years = ("1054", "1088", "1206", "1215", "1453", "1455", "1492", "1509", "1517", "1519", "1564", "1651", "1687", "1776", "1789", "1815", "1825", "1859", "1885", "1893")
 
 
+def get_mask(password):
+    mask = []
+    for char in password:
+        if char in alpha_lower_pool:
+            mask.append(alpha_lower_mask)
+        elif char in alpha_upper_pool:
+            mask.append(alpha_upper_mask)
+        elif char in digit_pool:
+            mask.append(digit_mask)
+        else:
+            mask.append(special_mask)
+    return mask
+
+
+def get_character_pool_from_mask_code(mask_code):
+    if mask_code == alpha_lower_mask:
+        return alpha_lower_pool
+    if mask_code == alpha_upper_mask:
+        return alpha_upper_pool
+    if mask_code == digit_mask:
+        return digit_pool
+    if mask_code == special_mask:
+        return special_pool
+    return ""
+
+
 def _generate_mask_builder(mask):
     mask_builder = []
     for i in range(0, len(mask), 2):
@@ -24,7 +50,7 @@ def _generate_mask_builder(mask):
     return mask_builder
 
 
-def _generate_year_derivatives(mask_builder, year_start_index):
+def _generate_year_mask_subset(mask_builder, year_start_index):
     derivatives = []
     derivative_builder = mask_builder.copy()
     for year in famous_pre_1900_years:
@@ -40,7 +66,7 @@ def _generate_year_derivatives(mask_builder, year_start_index):
     return derivatives
 
 
-def _get_year_derivatives(mask_builder):
+def _get_year_mask_permutations(mask_builder):
     derivatives = []
     year_start_index = -1
     digit_counter = 0
@@ -52,20 +78,20 @@ def _get_year_derivatives(mask_builder):
             digit_counter += 1
         else:
             if digit_counter == year_length:
-                new_derivatives = _generate_year_derivatives(mask_builder, year_start_index)
+                new_derivatives = _generate_year_mask_subset(mask_builder, year_start_index)
                 derivatives.extend(new_derivatives)
             digit_counter = 0
     if digit_counter == year_length:
-        new_derivatives = _generate_year_derivatives(mask_builder, year_start_index)
+        new_derivatives = _generate_year_mask_subset(mask_builder, year_start_index)
         derivatives.extend(new_derivatives)
     return derivatives
 
 
-def get_mask_derivatives(mask_list):
+def get_mask_attack_suggestions(mask_list):
     derivatives = []
     for mask in mask_list:
         mask_builder = _generate_mask_builder(mask)
-        year_derivatives = _get_year_derivatives(mask_builder)
+        year_derivatives = _get_year_mask_permutations(mask_builder)
         if len(year_derivatives) == 0:
             derivatives.append(mask)
         else:

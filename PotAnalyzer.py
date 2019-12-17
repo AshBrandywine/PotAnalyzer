@@ -4,10 +4,9 @@ import time
 from datetime import timedelta
 import math
 import sqlite3
-import parameters
-import passwordtools
-import masktools
-import passwordanalysis
+import ParameterTools
+import PasswordTools
+import MaskTools
 
 
 def print_usage():
@@ -42,7 +41,7 @@ if len(sys.argv) < 2:
     print_usage()
     exit()
 
-params = parameters.Parameters(sys.argv)
+params = ParameterTools.Parameters(sys.argv)
 
 if params.display_help:
     print_usage()
@@ -60,7 +59,7 @@ with sqlite3.connect("") as db:
     db.execute("create table new_password_set (password text, unique(password))")
     db.commit()
     masks = {}
-    word_extractor = passwordanalysis.WordExtractor()
+    word_extractor = PasswordTools.WordExtractor()
     password_total = 0
 
     if params.previous_passwords is not None and not params.analyze_only:
@@ -99,7 +98,7 @@ with sqlite3.connect("") as db:
                 db.execute("insert or ignore into password_set values (?)", (password,))
                 db.execute("insert or ignore into derivative_set values (?)", (password,))
                 db.commit()
-                mask = passwordtools.get_mask(password)
+                mask = MaskTools.get_mask(password)
                 mask_key = "".join(mask)
                 if mask_key in masks.keys():
                     masks[mask_key] = masks[mask_key] + 1
@@ -122,7 +121,7 @@ with sqlite3.connect("") as db:
             break
         mask_process_password_count += count_mask_pair[0]
         mask_list.append(count_mask_pair[1])
-    mask_derivatives = masktools.get_mask_derivatives(mask_list)
+    mask_attack_suggestions = MaskTools.get_mask_attack_suggestions(mask_list)
 
     unique_derivatives_computed = 0
     if not params.analyze_only:
@@ -140,7 +139,7 @@ with sqlite3.connect("") as db:
                     time_remaining_text = get_estimated_time_remaining(float(counter) / float(record_count), depth_start_time)
                 print_progress(progress_prefix, counter, record_count, time_remaining_text)
                 counter += 1
-                new_derivative_set = passwordtools.get_all_derivatives(row[0])
+                new_derivative_set = PasswordTools.get_all_derivatives(row[0])
                 db.executemany("insert or ignore into new_password_set values (?)", iterate_set_as_tuples(new_derivative_set))
             db.commit()
             print("")
@@ -169,10 +168,10 @@ with sqlite3.connect("") as db:
 
     try:
         with open(params.maskfile_output_name, "w") as outfile:
-            for mask in mask_derivatives:
+            for mask in mask_attack_suggestions:
                 outfile.write(mask + "\n")
     except IOError:
-        print("There was an issue writing the mask file")
+        print("There was an issue writing the mask attack file")
 
     try:
         with open(params.analysis_output_name, "w") as outfile:
@@ -207,8 +206,8 @@ print("Potfile backup saved to '" + params.potfile_backup_name + "'")
 process_time = end_time - start_time
 print("Processing took %s" % str(timedelta(seconds=process_time)))
 
+print("Passwords processed from potfile: " + str(password_total))
 print("Unique derivatives computed: " + str(unique_derivatives_computed))
 print("Unique Masks discovered: " + str(len(masks)))
-print(str(len(mask_derivatives)) + " mask derivatives created for .hcmask file")
-
+print(str(len(mask_attack_suggestions)) + " mask derivatives created for .hcmask file")
 
