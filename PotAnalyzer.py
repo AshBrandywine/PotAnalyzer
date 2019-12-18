@@ -37,6 +37,18 @@ def iterate_set_as_tuples(my_set):
         yield (set_item,)
 
 
+def collection_to_pretty_string(collection):
+    string_builder = []
+    first_item = True
+    for item in collection:
+        if first_item:
+            first_item = False
+        else:
+            string_builder.append(", ")
+        string_builder.append(str(item))
+    return "".join(string_builder)
+
+
 if len(sys.argv) < 2:
     print_usage()
     exit()
@@ -184,7 +196,8 @@ with sqlite3.connect("") as db:
                 if pct < 0.01:
                     break
                 word = word_tuple[1]
-                outfile.write("%s (%.2f%%) - %s\n" % (occurrences, pct, word))
+                variants = word_extractor.get_variants(word)
+                outfile.write("%s (%.2f%%) - %s\n" % (occurrences, pct, collection_to_pretty_string(variants)))
             outfile.write("\nCommon password masks:\n")
             for mask_tuple in masks_ordered:
                 occurrences = mask_tuple[0]
@@ -200,14 +213,20 @@ with sqlite3.connect("") as db:
 
 end_time = time.time()
 
+print("* * *")
+
 print("Results saved to '" + params.derivative_output_name + "' '" + params.maskfile_output_name + "' '" + params.analysis_output_name + "'")
 print("Potfile backup saved to '" + params.potfile_backup_name + "'")
+
+print("* * *")
 
 process_time = end_time - start_time
 print("Processing took %s" % str(timedelta(seconds=process_time)))
 
+print("* * *")
+
 print("Passwords processed from potfile: " + str(password_total))
 print("Unique derivatives computed: " + str(unique_derivatives_computed))
 print("Unique Masks discovered: " + str(len(masks)))
-print(str(len(mask_attack_suggestions)) + " mask derivatives created for .hcmask file")
+print(str(len(mask_attack_suggestions)) + " focused attack masks created for .hcmask file")
 

@@ -69,6 +69,14 @@ def get_all_derivatives(password, mask=None):
     return derivative_set
 
 
+def _is_trailing_digit(word, character_index):
+    for i in range(character_index, len(word)):
+        char = word[i]
+        if char.isalpha():
+            return False
+    return True
+
+
 def extract_words(password):
     extracted_words = []
     current_word = []
@@ -76,13 +84,14 @@ def extract_words(password):
     for i in range(len(password)):
         char = password[i]
         if building_word:
-            if char.islower():
+            leet_detected = LeetTools.is_possible_leet_substitution(char) and not _is_trailing_digit(password, i)
+            if char.islower() or leet_detected:
                 current_word.append(char)
             else:
                 extracted_words.append("".join(current_word))
                 current_word.clear()
                 if char.isalpha():
-                    current_word.append(char.lower())
+                    current_word.append(char)
                 else:
                     building_word = False
         elif char.isalpha():
@@ -93,23 +102,52 @@ def extract_words(password):
     return extracted_words
 
 
+def _normalize_word(word):
+    word_builder = []
+    for char in word:
+        if char.islower():
+            word_builder.append(char)
+        elif LeetTools.is_possible_leet_substitution(char):
+            word_builder.append(LeetTools.deleet(char))
+        else:
+            word_builder.append(char.lower())
+    return "".join(word_builder)
+
+
 class WordExtractor:
     def __init__(self):
-        self.extracted_words = {}
+        self.extracted_word_count = {}
+        self.extracted_word_variants = {}
 
     def extract(self, password, minimum_word_size=3):
         words = extract_words(password)
         for word in words:
             if len(word) < minimum_word_size:
                 continue
-            if word in self.extracted_words.keys():
-                count = self.extracted_words.get(word)
-                self.extracted_words[word] = count + 1
-            else:
-                self.extracted_words[word] = 1
+            normalized_word = _normalize_word(word)
+            self._add_to_word_count(normalized_word)
+            self._add_variant(normalized_word, word)
+
+    def _add_to_word_count(self, normalized_word):
+        if normalized_word in self.extracted_word_count.keys():
+            count = self.extracted_word_count.get(normalized_word)
+            self.extracted_word_count[normalized_word] = count + 1
+        else:
+            self.extracted_word_count[normalized_word] = 1
+
+    def _add_variant(self, normalized_word, variant):
+        if normalized_word in self.extracted_word_variants.keys():
+            variant_list = self.extracted_word_variants[normalized_word]
+            if variant not in variant_list:
+                variant_list.append(variant)
+        else:
+            self.extracted_word_variants[normalized_word] = [variant]
 
     def get_ordered_common_words(self):
-        words_ordered = [(v, k) for k, v in self.extracted_words.items()]
+        words_ordered = [(v, k) for k, v in self.extracted_word_count.items()]
         words_ordered.sort(reverse=True)
         return words_ordered
+
+    def get_variants(self, word):
+        return tuple(self.extracted_word_variants[word])
 
