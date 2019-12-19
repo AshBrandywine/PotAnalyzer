@@ -3,14 +3,14 @@ import shutil
 import time
 from datetime import timedelta
 import math
-import sqlite3
+import DataHandler
 import ParameterTools
 import PasswordTools
 import MaskTools
 
 
 parameters = None
-sqlite_db = None
+data_handler = None
 
 
 def print_usage():
@@ -53,28 +53,9 @@ def collection_to_pretty_string(collection):
     return "".join(string_builder)
 
 
-def import_previous_passwords(filename):
-    try:
-        with open(filename, "r") as previous_passwords:
-            print("Importing previous password file...")
-            for line in previous_passwords.readlines():
-                line_split = line.strip().split(":")
-                if len(line_split) == 1:
-                    password = line_split[0]
-                else:
-                    password = line_split[len(line_split)-1]
-                if len(password) == 0:
-                    continue
-
-                sqlite_db.execute("insert or ignore into omission_set values (?)", (password,))
-                sqlite_db.commit()
-    except IOError:
-        print("The provided previous password file was invalid or could not be found.")
-
-
 def main():
     global parameters
-    global sqlite_db
+    global data_handler
 
     if len(sys.argv) < 2:
         print_usage()
@@ -91,17 +72,24 @@ def main():
     masks = {}
 
     start_time = time.time()
-    with sqlite3.connect("") as sqlite_db:
-        sqlite_db.execute("create table password_set (password text, unique(password))")
-        sqlite_db.execute("create table omission_set (password text, unique(password))")
-        sqlite_db.execute("create table derivative_set (password text, unique(password))")
-        sqlite_db.execute("create table new_password_set (password text, unique(password))")
-        sqlite_db.commit()
-
+    with DataHandler.SqliteDataHandler() as data_handler:
         word_extractor = PasswordTools.WordExtractor()
 
         if parameters.previous_passwords is not None and not parameters.analyze_only:
-            import_previous_passwords(parameters.previous_passwords)
+            try:
+                with open(parameters.previous_passwords, "r") as previous_passwords:
+                    print("Importing previous password file...")
+                    for line in previous_passwords.readlines():
+                        line_split = line.strip().split(":")
+                        if len(line_split) == 1:
+                            password = line_split[0]
+                        else:
+                            password = line_split[len(line_split)-1]
+                        if len(password) == 0:
+                            continue
+                        data_handler.add_omitted_password(password)
+            except IOError:
+                print("The provided previous password file was invalid or could not be found.")
 
         try:
             with open(parameters.potfile_name, "r") as potfile:
@@ -113,13 +101,10 @@ def main():
                     password = line_split[len(line_split)-1]
                     if len(password) == 0:
                         continue
-                    cursor = sqlite_db.execute("select * from omission_set where password = ?", (password,))
-                    if cursor.rowcount > 0:
+                    if data_handler.password_is_omitted(password):
                         continue
+                    data_handler.stage_password(password, auto_commit=False)
                     word_extractor.extract(password)
-                    sqlite_db.execute("insert or ignore into password_set values (?)", (password,))
-                    sqlite_db.execute("insert or ignore into derivative_set values (?)", (password,))
-                    sqlite_db.commit()
                     mask = MaskTools.get_mask(password)
                     mask_key = "".join(mask)
                     if mask_key in masks.keys():
@@ -127,6 +112,8 @@ def main():
                     else:
                         masks[mask_key] = 1
                     password_total += 1
+                data_handler.commit()
+                data_handler.flush_staged_passwords()
         except IOError:
             print("The provided pot file was invalid or could not be found.")
 
@@ -147,12 +134,10 @@ def main():
 
         if not parameters.analyze_only:
             for i in range(parameters.depth):
-                record_count = sqlite_db.execute("select count(password) from password_set").fetchone()[0]
+                record_count = data_handler.working_password_count()
                 progress_prefix = "\rProcessing password set for depth " + str(i+1) + "... "
-                sqlite_db.execute("delete from new_password_set")
-                sqlite_db.commit()
                 counter = 1
-                cursor = sqlite_db.execute("select password from password_set")
+                cursor = data_handler.get_working_password_iterator()
                 depth_start_time = time.time()
                 time_remaining_text = None
                 for row in cursor:
@@ -160,23 +145,20 @@ def main():
                         time_remaining_text = get_estimated_time_remaining(float(counter) / float(record_count), depth_start_time)
                     print_progress(progress_prefix, counter, record_count, time_remaining_text)
                     counter += 1
-                    new_derivative_set = PasswordTools.get_all_derivatives(row[0])
-                    sqlite_db.executemany("insert or ignore into new_password_set values (?)", iterate_set_as_tuples(new_derivative_set))
-                sqlite_db.commit()
+                    fresh_derivative_set = PasswordTools.get_all_derivatives(row[0])
+                    data_handler.stage_many_passwords(fresh_derivative_set, auto_commit=False)
+                data_handler.commit()
                 print("")
                 print("Aggregating results from depth " + str(i+1) + "...")
-                sqlite_db.execute("insert or ignore into derivative_set(password) select password from new_password_set")
-                sqlite_db.execute("delete from password_set")
-                sqlite_db.execute("insert or ignore into password_set(password) select password from new_password_set")
-                sqlite_db.commit()
-            unique_derivatives_computed = sqlite_db.execute("select count(password) from derivative_set").fetchone()[0]
+                data_handler.flush_staged_passwords()
+            unique_derivatives_computed = data_handler.derivative_count()
 
         print("Outputting results to disk...")
 
         if not parameters.analyze_only:
             try:
                 with open(parameters.derivative_output_name, "w") as outfile:
-                    cursor = sqlite_db.execute("select password from derivative_set")
+                    cursor = data_handler.get_derivative_iterator()
                     for row in cursor:
                         outfile.write(row[0] + "\n")
             except IOError:
