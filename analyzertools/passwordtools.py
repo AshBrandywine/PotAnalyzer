@@ -1,5 +1,4 @@
-import MaskTools
-import LeetTools
+from analyzertools import leetspeak, masktools
 
 
 def _generate_character_replace_derivatives(password, character_index, character_pool):
@@ -15,25 +14,25 @@ def _generate_character_replace_derivatives(password, character_index, character
 
 def get_mask_derivatives(password, mask=None):
     if mask is None:
-        mask = MaskTools.get_mask(password)
+        mask = masktools.get_mask(password)
     derivative_set = set()
     for i in range(len(password)):
         mask_code = mask[i]
-        character_pool = MaskTools.get_character_pool_from_mask_code(mask_code)
+        character_pool = masktools.get_character_pool_from_mask_code(mask_code)
         derivative_set = derivative_set | _generate_character_replace_derivatives(password, i, character_pool)
     return derivative_set
 
 
 def get_add_derivatives(password, mask=None):
     if mask is None:
-        mask = MaskTools.get_mask(password)
+        mask = masktools.get_mask(password)
     derivative_set = set()
     for i in range(len(password) + 1):
         character_pool = ""
         if i > 0:
-            character_pool = character_pool.join(MaskTools.get_character_pool_from_mask_code(mask[i - 1]))
+            character_pool = character_pool.join(masktools.get_character_pool_from_mask_code(mask[i - 1]))
         if i < len(password):
-            character_pool = character_pool.join(MaskTools.get_character_pool_from_mask_code(mask[i]))
+            character_pool = character_pool.join(masktools.get_character_pool_from_mask_code(mask[i]))
         for char in character_pool:
             derivative_builder = list(password)
             derivative_builder.insert(i, char)
@@ -52,7 +51,7 @@ def get_remove_derivatives(password):
 
 def get_leet_derivatives(password):
     derivative_set = set()
-    leet_generator = LeetTools.LeetGenerator(password)
+    leet_generator = leetspeak.LeetGenerator(password)
     while leet_generator.has_next:
         derivative_set.add(leet_generator.get_next_permutation())
     return derivative_set
@@ -60,7 +59,7 @@ def get_leet_derivatives(password):
 
 def get_all_derivatives(password, mask=None):
     if mask is None:
-        mask = MaskTools.get_mask(password)
+        mask = masktools.get_mask(password)
     derivative_set = set()
     derivative_set.update(get_mask_derivatives(password, mask))
     derivative_set.update(get_add_derivatives(password, mask))
@@ -84,7 +83,7 @@ def extract_words(password):
     for i in range(len(password)):
         char = password[i]
         if building_word:
-            leet_detected = LeetTools.is_possible_leet_substitution(char) and not _is_trailing_digit(password, i)
+            leet_detected = leetspeak.is_possible_leet_substitution(char) and not _is_trailing_digit(password, i)
             if char.islower() or leet_detected:
                 current_word.append(char)
             else:
@@ -107,8 +106,8 @@ def _normalize_word(word):
     for char in word:
         if char.islower():
             word_builder.append(char)
-        elif LeetTools.is_possible_leet_substitution(char):
-            word_builder.append(LeetTools.deleet(char))
+        elif leetspeak.is_possible_leet_substitution(char):
+            word_builder.append(leetspeak.deleet(char))
         else:
             word_builder.append(char.lower())
     return "".join(word_builder)

@@ -1,16 +1,14 @@
+#!/usr/bin/env python3
+
 import sys
 import shutil
 import time
 from datetime import timedelta
 import math
-import DataHandler
-import ParameterTools
-import PasswordTools
-import MaskTools
-
+from analyzertools import passwordtools, parameters, database, masktools
 
 data_handler = None
-word_extractor = PasswordTools.WordExtractor()
+word_extractor = passwordtools.WordExtractor()
 masks = {}
 ordered_mask_list = []
 password_count = 0
@@ -92,7 +90,7 @@ def import_potfile(filename):
                     continue
                 data_handler.stage_password(password, auto_commit=False)
                 word_extractor.extract(password)
-                mask = MaskTools.get_mask(password)
+                mask = masktools.get_mask(password)
                 mask_key = "".join(mask)
                 if mask_key in masks.keys():
                     masks[mask_key] = masks[mask_key] + 1
@@ -119,7 +117,7 @@ def analyze_masks(weight_cutoff):
             break
         mask_process_password_count += count_mask_pair[0]
         mask_list.append(count_mask_pair[1])
-    return MaskTools.get_mask_attack_suggestions(mask_list)
+    return masktools.get_mask_attack_suggestions(mask_list)
 
 
 def generate_derivatives(depth):
@@ -135,7 +133,7 @@ def generate_derivatives(depth):
                 time_remaining_text = get_estimated_time_remaining(float(counter) / float(record_count), depth_start_time)
             print_progress(progress_prefix, counter, record_count, time_remaining_text)
             counter += 1
-            fresh_derivative_set = PasswordTools.get_all_derivatives(row[0])
+            fresh_derivative_set = passwordtools.get_all_derivatives(row[0])
             data_handler.stage_many_passwords(fresh_derivative_set, auto_commit=False)
         data_handler.commit()
         print("")
@@ -212,7 +210,7 @@ def main():
         print_usage()
         exit()
 
-    params = ParameterTools.Parameters(sys.argv)
+    params = parameters.Parameters(sys.argv)
 
     if params.display_help:
         print_usage()
@@ -220,7 +218,7 @@ def main():
 
     unique_derivatives_computed = 0
     start_time = time.time()
-    with DataHandler.SqliteDataHandler() as data_handler:
+    with database.SqliteDataHandler() as data_handler:
         if params.previous_passwords is not None and not params.analyze_only:
             import_password_omissions(params.previous_passwords)
         import_potfile(params.potfile_name)
