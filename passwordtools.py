@@ -151,3 +151,7 @@ class WordExtractor:
     def get_variants(self, word):
         return tuple(self.extracted_word_variants[word])
 
+    def clear(self):
+        self.extracted_word_count.clear()
+        self.extracted_word_variants.clear()
+
