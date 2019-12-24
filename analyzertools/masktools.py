@@ -14,20 +14,24 @@ special_pool = "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~"
 
 year_length = 4
 recent_centuries = ("19", "20")
-famous_pre_1900_years = ("1054", "1088", "1206", "1215", "1453", "1455", "1492", "1509", "1517", "1519", "1564", "1651", "1687", "1776", "1789", "1815", "1825", "1859", "1885", "1893")
+famous_pre_1900_years = ("1054", "1088", "1206", "1215", "1453", "1455", "1492", "1509", "1517", "1519", "1564", "1651",
+                         "1687", "1776", "1789", "1815", "1825", "1859", "1885", "1893")
+
+
+def get_character_mask(char):
+    if char in alpha_lower_pool:
+        return alpha_lower_mask
+    if char in alpha_upper_pool:
+        return alpha_upper_mask
+    if char in digit_pool:
+        return digit_mask
+    return special_mask
 
 
 def get_mask(password):
     mask = []
     for char in password:
-        if char in alpha_lower_pool:
-            mask.append(alpha_lower_mask)
-        elif char in alpha_upper_pool:
-            mask.append(alpha_upper_mask)
-        elif char in digit_pool:
-            mask.append(digit_mask)
-        else:
-            mask.append(special_mask)
+        mask.append(get_character_mask(char))
     return mask
 
 

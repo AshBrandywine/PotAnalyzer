@@ -38,13 +38,16 @@ class SqliteDataHandler:
             self.db.commit()
 
     def stage_many_passwords(self, collection, auto_commit=True):
-        self.db.executemany("insert or ignore into %s values(?)" % self.staged_passwords, iterate_collection_as_tuples(collection))
+        self.db.executemany("insert or ignore into %s values(?)" % self.staged_passwords,
+                            iterate_collection_as_tuples(collection))
         if auto_commit:
             self.db.commit()
 
     def flush_staged_passwords(self, auto_commit=True):
-        self.db.execute("insert or ignore into %s(password) select password from %s" % (self.derivatives, self.staged_passwords))
-        self.db.execute("insert or ignore into %s(password) select password from %s" % (self.working_passwords, self.staged_passwords))
+        self.db.execute("insert or ignore into %s(password) select password from %s" % (self.derivatives,
+                                                                                        self.staged_passwords))
+        self.db.execute("insert or ignore into %s(password) select password from %s" % (self.working_passwords,
+                                                                                        self.staged_passwords))
         self.db.execute("delete from %s" % self.staged_passwords)
         if auto_commit:
             self.db.commit()

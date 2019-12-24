@@ -16,7 +16,13 @@ omission_count = 0
 
 
 def print_usage():
-    print("usage: " + sys.argv[0] + " /your/potfile/path [-d, --depth DEPTH] [-o, --output OUTPUT_NAME] [-a, --analyze-only] [-w, --mask-weight-cutoff CUTOFF] [-p, --previous-passwords PASSWORD_LIST] [-h, --help]")
+    print("""usage: %s /your/potfile/path 
+    [-o, --output OUTPUT_NAME]                  Give the output files a unique prefix
+    [-a, --analyze-only]                        Skip generating derivatives, only analyze the potfile (very fast)
+    [-w, --mask-weight-cutoff CUTOFF]           Between 0 and 1, basically how large to make the mask attack file (default 0.3)
+    [-p, --previous-passwords PASSWORD_LIST]    Include a potfile or word list to omit from derivative generation
+    [-d, --depth DEPTH]                         How many times to recursively re-process derivative results (default 1, exponentially intensive)
+    [-h, --help]                                Show this help output""" % sys.argv[0])
 
 
 def print_progress(prefix_comment, completed, total, time_left=None):
@@ -24,7 +30,8 @@ def print_progress(prefix_comment, completed, total, time_left=None):
     if time_left is None or len(time_left) == 0:
         sys.stdout.write("%s %d/%d (%.2f%%)" % (prefix_comment, completed, total, percent))
     else:
-        sys.stdout.write("%s %d/%d (%.2f%%) Estimated time remaining: %s" % (prefix_comment, completed, total, percent, time_left))
+        sys.stdout.write("%s %d/%d (%.2f%%) Estimated time remaining: %s" % (prefix_comment, completed, total,
+                                                                             percent, time_left))
     sys.stdout.flush()
 
 
@@ -130,7 +137,8 @@ def generate_derivatives(depth):
         time_remaining_text = None
         for row in cursor:
             if counter % 128 == 0:
-                time_remaining_text = get_estimated_time_remaining(float(counter) / float(record_count), depth_start_time)
+                time_remaining_text = get_estimated_time_remaining(float(counter) / float(record_count),
+                                                                   depth_start_time)
             print_progress(progress_prefix, counter, record_count, time_remaining_text)
             counter += 1
             fresh_derivative_set = passwordtools.get_all_derivatives(row[0])
@@ -236,15 +244,21 @@ def main():
     end_time = time.time()
 
     print("* * *")
-    print("Results saved to '" + params.derivative_output_name + "' '" + params.maskfile_output_name + "' '" + params.analysis_output_name + "'")
-    print("Potfile backup saved to '" + params.potfile_backup_name + "'")
+    if params.analyze_only:
+        print("Results saved to '%s' '%s'" % (params.maskfile_output_name,
+                                              params.analysis_output_name))
+    else:
+        print("Results saved to '%s' '%s' '%s'" % (params.derivative_output_name,
+                                                   params.maskfile_output_name,
+                                                   params.analysis_output_name))
+        print("Potfile backup saved to '%s'" % params.potfile_backup_name)
     print("* * *")
     print("Processing took %s" % elapsed_time_str(start_time, end_time))
     print("* * *")
-    print("Passwords processed from potfile: " + str(password_count))
-    print("Unique derivatives computed: " + str(unique_derivatives_computed))
-    print("Unique Masks discovered: " + str(len(masks)))
-    print(str(len(mask_attack_suggestions)) + " focused attack masks created for .hcmask file")
+    print("Passwords processed from potfile: %s" % str(password_count))
+    print("Unique derivatives computed: %s" % str(unique_derivatives_computed))
+    print("Unique Masks discovered: %s" % str(len(masks)))
+    print("%s focused attack masks created for .hcmask file" % str(len(mask_attack_suggestions)))
 
 
 if __name__ == "__main__":

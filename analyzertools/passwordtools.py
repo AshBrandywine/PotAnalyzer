@@ -1,6 +1,13 @@
 from analyzertools import leetspeak, masktools
 
 
+CHAR_OTHER = 0
+CHAR_UPPER = 1
+CHAR_LOWER = 2
+CHAR_DIGIT = 3
+CHAR_LEET = 4
+
+
 def _generate_character_replace_derivatives(password, character_index, character_pool):
     derivative_set = set()
     for char in character_pool:
@@ -76,24 +83,43 @@ def _is_trailing_digit(word, character_index):
     return True
 
 
+def _get_character_type(word, index):
+    char = word[index]
+    if char.isalpha():
+        if char.isupper():
+            return CHAR_UPPER
+        else:
+            return CHAR_LOWER
+    if char.isdigit():
+        if _is_trailing_digit(word, index):
+            return CHAR_DIGIT
+        elif leetspeak.is_possible_leet_substitution(char):
+            return CHAR_LEET
+        else:
+            return CHAR_DIGIT
+    if leetspeak.is_possible_leet_substitution(char):
+        return CHAR_LEET
+    return CHAR_OTHER
+
+
 def extract_words(password):
     extracted_words = []
     current_word = []
     building_word = False
     for i in range(len(password)):
         char = password[i]
+        char_type = _get_character_type(password, i)
         if building_word:
-            leet_detected = leetspeak.is_possible_leet_substitution(char) and not _is_trailing_digit(password, i)
-            if char.islower() or leet_detected:
+            if char_type in (CHAR_LOWER, CHAR_LEET):
                 current_word.append(char)
             else:
                 extracted_words.append("".join(current_word))
                 current_word.clear()
-                if char.isalpha():
+                if char_type in (CHAR_LOWER, CHAR_UPPER):
                     current_word.append(char)
                 else:
                     building_word = False
-        elif char.isalpha():
+        elif char_type in (CHAR_LOWER, CHAR_UPPER):
             building_word = True
             current_word.append(char)
     if building_word:
