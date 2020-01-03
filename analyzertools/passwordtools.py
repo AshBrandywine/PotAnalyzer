@@ -105,23 +105,31 @@ def _get_character_type(word, index):
 def extract_words(password):
     extracted_words = []
     current_word = []
-    building_word = False
+    building_word = []
+    caps_detection_complete = False
+    is_all_caps = False
     for i in range(len(password)):
         char = password[i]
         char_type = _get_character_type(password, i)
         if building_word:
-            if char_type in (CHAR_LOWER, CHAR_LEET):
+            if not caps_detection_complete and char_type in (CHAR_UPPER, CHAR_LOWER):
+                caps_detection_complete = True
+                is_all_caps = (char_type == CHAR_UPPER)
+            if char_type == CHAR_LEET or \
+                    (char_type == CHAR_UPPER and is_all_caps) or \
+                    (char_type == CHAR_LOWER and not is_all_caps):
                 current_word.append(char)
             else:
+                building_word = False
+                caps_detection_complete = False
+                is_all_caps = False
                 extracted_words.append("".join(current_word))
                 current_word.clear()
-                if char_type in (CHAR_LOWER, CHAR_UPPER):
-                    current_word.append(char)
-                else:
-                    building_word = False
-        elif char_type in (CHAR_LOWER, CHAR_UPPER):
+        if not building_word and char_type in (CHAR_UPPER, CHAR_LOWER):
             building_word = True
             current_word.append(char)
+            if char_type == CHAR_LOWER:
+                caps_detection_complete = True
     if building_word:
         extracted_words.append("".join(current_word))
     return extracted_words
