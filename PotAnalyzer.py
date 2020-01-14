@@ -45,11 +45,6 @@ def get_estimated_time_remaining(percentage_complete, progress_start_time):
     return "Unknown"
 
 
-def iterate_set_as_tuples(my_set):
-    for set_item in my_set:
-        yield (set_item,)
-
-
 def collection_to_pretty_string(collection):
     string_builder = []
     first_item = True
