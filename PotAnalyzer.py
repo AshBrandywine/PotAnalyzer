@@ -22,6 +22,7 @@ def print_usage():
     [-w, --mask-weight-cutoff CUTOFF]           Between 0 and 1, basically how large to make the mask attack file (default 0.3)
     [-p, --previous-passwords PASSWORD_LIST]    Include a potfile or word list to omit from derivative generation
     [-d, --depth DEPTH]                         How many times to recursively re-process derivative results (default 1, exponentially intensive)
+    [-l, --deriver-length-limit]                Character length limit of passwords used to generate derivatives (default 16)
     [-h, --help]                                Show this help output""" % sys.argv[0])
 
 
@@ -122,22 +123,23 @@ def analyze_masks(weight_cutoff):
     return masktools.get_mask_attack_suggestions(mask_list)
 
 
-def generate_derivatives(depth):
+def generate_derivatives(depth, password_length_limit):
     for i in range(depth):
         record_count = data_handler.working_password_count()
         progress_prefix = "\rProcessing password set for depth " + str(i+1) + "... "
         counter = 1
         cursor = data_handler.get_working_password_iterator()
         depth_start_time = time.time()
-        time_remaining_text = None
+        time_remaining = None
         for row in cursor:
             if counter % 128 == 0:
-                time_remaining_text = get_estimated_time_remaining(float(counter) / float(record_count),
-                                                                   depth_start_time)
-            print_progress(progress_prefix, counter, record_count, time_remaining_text)
+                time_remaining = get_estimated_time_remaining(float(counter) / float(record_count), depth_start_time)
+            print_progress(progress_prefix, counter, record_count, time_remaining)
             counter += 1
-            fresh_derivative_set = passwordtools.get_all_derivatives(row[0])
-            data_handler.stage_many_passwords(fresh_derivative_set, auto_commit=False)
+            next_password = row[0]
+            if len(next_password) <= password_length_limit:
+                fresh_derivative_set = passwordtools.get_all_derivatives(row[0])
+                data_handler.stage_many_passwords(fresh_derivative_set, auto_commit=False)
         data_handler.commit()
         print("")
         print("Aggregating results from depth " + str(i+1) + "...")
@@ -228,7 +230,7 @@ def main():
         mask_attack_suggestions = analyze_masks(params.mask_weight_cutoff)
         if not params.analyze_only:
             data_handler.flush_staged_passwords()
-            generate_derivatives(params.depth)
+            generate_derivatives(params.depth, params.derivative_base_length_limit)
             unique_derivatives_computed = data_handler.derivative_count()
         print("Outputting results to disk...")
         if not params.analyze_only:

@@ -2,8 +2,8 @@ import getopt
 
 
 class Parameters:
-    unix_options = "hd:o:aw:p:"
-    gnu_options = ["help", "depth=", "output=", "analyze-only", "mask-weight-cutoff=, previous-passwords="]
+    unix_options = "hd:o:aw:p:l:"
+    gnu_options = ["help", "depth=", "output=", "analyze-only", "mask-weight-cutoff=", "previous-passwords=", "deriver-length-limit="]
 
     def __init__(self, argument_input):
         self.display_help = False
@@ -15,6 +15,7 @@ class Parameters:
         self.previous_passwords = None
         self.mask_weight_cutoff = 0.30
         self.analyze_only = False
+        self.derivative_base_length_limit = 16
         if argument_input[1].startswith("-"):
             self.display_help = True
         else:
@@ -40,3 +41,5 @@ class Parameters:
                 self.mask_weight_cutoff = float(current_value)
             elif current_argument in ("-p", "--previous-passwords"):
                 self.previous_passwords = current_value
+            elif current_argument in ("-l", "--deriver-length-limit"):
+                self.derivative_base_length_limit = current_value
