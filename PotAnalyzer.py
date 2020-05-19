@@ -137,7 +137,7 @@ def pre_analyze_potfile(potfile_name):
                 mask = masktools.get_mask(password)
                 mask_key = "".join(mask)
                 if mask_key in masks.keys():
-                    mask[mask_key] = mask[mask_key] + 1
+                    masks[mask_key] = masks[mask_key] + 1
                 else:
                     masks[mask_key] = 1
                 password_count += 1
@@ -155,14 +155,16 @@ def output_derivatives(potfile_name, output_name, password_length_limit):
         with open(potfile_name, 'r') as potfile:
             with batchwriter.BatchWriter(output_name) as batch_writer:
                 for line in potfile.readlines():
+                    password = parse_potfile_line(line)
+                    if len(password) == 0 or is_password_omitted(password):
+                        continue
                     if counter % 128 == 0:
                         time_remaining = get_estimated_time_remaining(float(counter)/float(password_count), start_time)
                     print_progress(progress_prefix, counter, password_count, time_remaining)
                     counter += 1
-                    next_password = parse_potfile_line(line)
-                    if not is_password_used_or_omitted(next_password) and len(next_password) <= password_length_limit:
-                        add_used_password(next_password)
-                        fresh_derivative_set = passwordtools.get_all_derivatives(next_password)
+                    if not is_password_used(password) and len(password) <= password_length_limit:
+                        add_used_password(password)
+                        fresh_derivative_set = passwordtools.get_all_derivatives(password)
                         batch_writer.add_many_lines(fresh_derivative_set)
                 unique_derivative_count = batch_writer.unique_line_count()
     except IOError:
@@ -247,7 +249,7 @@ def main():
         backup_potfile(params.potfile_name, params.potfile_backup_name)
     end_time = time.time()
 
-    print("* * *")
+    print("\n* * *")
     if params.analyze_only:
         print("Results saved to '%s' '%s'" % (params.maskfile_output_name,
                                               params.analysis_output_name))
