@@ -26,7 +26,8 @@ def print_usage():
     [-w, --mask-weight-cutoff CUTOFF]           Between 0 and 1, basically how large to make the mask attack file (default 0.3)
     [-p, --previous-passwords PASSWORD_LIST]    Include a potfile or word list to omit from derivative generation
     [-d, --depth DEPTH]                         [DEPRECATED] How many times to recursively re-process derivative results [DEPRECATED]
-    [-l, --deriver-length-limit]                Character length limit of passwords used to generate derivatives (default 16)
+    [-l, --deriver-length-limit LIMIT]          Character length limit of passwords used to generate derivatives (default 16)
+    [-b, --batch-size SIZE]                     Smaller size reduces peak memory usage at the cost of performance (default 1000000)
     [-h, --help]                                Show this help output""" % sys.argv[0])
 
 
@@ -145,7 +146,7 @@ def pre_analyze_potfile(potfile_name):
         print('The provided potfile was invalid or could not be found.')
 
 
-def output_derivatives(potfile_name, output_name, password_length_limit):
+def output_derivatives(potfile_name, output_name, password_length_limit, batch_size):
     global unique_derivative_count
     progress_prefix = '\rGenerating and outputting unique derivatives... '
     counter = 1
@@ -154,6 +155,7 @@ def output_derivatives(potfile_name, output_name, password_length_limit):
     try:
         with open(potfile_name, 'r') as potfile:
             with batchwriter.BatchWriter(output_name) as batch_writer:
+                batch_writer.batch_size = batch_size
                 for line in potfile.readlines():
                     password = parse_potfile_line(line)
                     if len(password) == 0 or is_password_omitted(password):
@@ -245,7 +247,8 @@ def main():
     write_maskfile_output(params.maskfile_output_name, mask_attack_suggestions)
     write_analysis_output(params.analysis_output_name)
     if not params.analyze_only:
-        output_derivatives(params.potfile_name, params.derivative_output_name, params.derivative_base_length_limit)
+        output_derivatives(params.potfile_name, params.derivative_output_name,
+                           params.derivative_base_length_limit, params.writer_batch_size)
         backup_potfile(params.potfile_name, params.potfile_backup_name)
     end_time = time.time()
 

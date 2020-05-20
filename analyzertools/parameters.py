@@ -2,8 +2,9 @@ import getopt
 
 
 class Parameters:
-    unix_options = "hd:o:aw:p:l:"
-    gnu_options = ["help", "depth=", "output=", "analyze-only", "mask-weight-cutoff=", "previous-passwords=", "deriver-length-limit="]
+    unix_options = "hd:o:aw:p:l:b:"
+    gnu_options = ["help", "depth=", "output=", "analyze-only", "mask-weight-cutoff=", "previous-passwords=",
+                   "deriver-length-limit=", "batch-size="]
 
     def __init__(self, argument_input):
         self.display_help = False
@@ -16,6 +17,7 @@ class Parameters:
         self.mask_weight_cutoff = 0.30
         self.analyze_only = False
         self.derivative_base_length_limit = 16
+        self.writer_batch_size = 1000000
         if argument_input[1].startswith("-"):
             self.display_help = True
         else:
@@ -43,3 +45,5 @@ class Parameters:
                 self.previous_passwords = current_value
             elif current_argument in ("-l", "--deriver-length-limit"):
                 self.derivative_base_length_limit = current_value
+            elif current_argument in ("-b", "--batch-size"):
+                self.writer_batch_size = int(current_value)
