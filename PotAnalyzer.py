@@ -5,7 +5,7 @@ import shutil
 import time
 from datetime import timedelta
 import math
-from analyzertools import passwordtools, parameters, masktools, batchwriter
+from analyzertools import passwordtools, parameters, masktools, batchwriter, progress
 
 data_handler = None
 writer = None
@@ -29,26 +29,6 @@ def print_usage():
     [-l, --deriver-length-limit LIMIT]          Character length limit of passwords used to generate derivatives (default 16)
     [-b, --batch-size SIZE]                     Smaller size reduces peak memory usage at the cost of performance (default 1000000)
     [-h, --help]                                Show this help output""" % sys.argv[0])
-
-
-def print_progress(prefix_comment, completed, total, time_left=None):
-    percent = (float(completed) / float(total)) * 100
-    if time_left is None or len(time_left) == 0:
-        sys.stdout.write("%s %d/%d (%.2f%%)" % (prefix_comment, completed, total, percent))
-    else:
-        sys.stdout.write("%s %d/%d (%.2f%%) Estimated time remaining: %s" % (prefix_comment, completed, total,
-                                                                             percent, time_left))
-    sys.stdout.flush()
-
-
-def get_estimated_time_remaining(percentage_complete, progress_start_time):
-    time_elapsed = time.time() - progress_start_time
-    if time_elapsed > 0:
-        completion_rate = percentage_complete / time_elapsed
-        remaining_percentage = 1.00 - percentage_complete
-        seconds_left = round(remaining_percentage / completion_rate)
-        return str(timedelta(seconds=seconds_left))
-    return "Unknown"
 
 
 def collection_to_pretty_string(collection):
@@ -147,19 +127,20 @@ def output_derivatives(potfile_name, output_name, password_length_limit, batch_s
     global unique_derivative_count
     progress_prefix = '\rGenerating and outputting unique derivatives... '
     counter = 1
-    start_time = time.time()
-    time_remaining = None
     try:
         with open(potfile_name, 'r') as potfile:
             with batchwriter.BatchWriter(output_name) as batch_writer:
                 batch_writer.batch_size = batch_size
+                tracker = progress.ProgressTracker(password_count)
                 for line in potfile.readlines():
                     password = parse_potfile_line(line)
                     if len(password) == 0 or is_password_omitted(password):
                         continue
+                    tracker.update_completed_items(counter)
                     if counter % 128 == 0:
-                        time_remaining = get_estimated_time_remaining(float(counter)/float(password_count), start_time)
-                    print_progress(progress_prefix, counter, password_count, time_remaining)
+                        tracker.update_estimation()
+                    sys.stdout.write(progress_prefix + str(tracker))
+                    sys.stdout.flush()
                     counter += 1
                     if not is_password_used(password) and len(password) <= password_length_limit:
                         add_used_password(password)
