@@ -79,16 +79,13 @@ def is_password_omitted(password):
     return hash(password) in omitted_hashes
 
 
-def is_password_used_or_omitted(password):
-    return is_password_used(password) or is_password_omitted(password)
-
-
-def parse_potfile_line(line, try_parse_malformed=False):
-    line_split = line.strip().split(':')
-    if len(line_split) > 1:
-        return line_split[len(line_split)-1]
-    elif try_parse_malformed:
-        return line_split[0]
+def parse_potfile_line(line_input, try_parse_malformed=False):
+    line = line_input.strip()
+    start_index = line.find(':') + 1
+    if 0 < start_index < len(line):
+        return line[start_index:]
+    if try_parse_malformed:
+        return line
     return ''
 
 
