@@ -136,9 +136,7 @@ def output_derivatives(potfile_name, output_name, password_length_limit, batch_s
                     password = parse_potfile_line(line)
                     if len(password) == 0 or is_password_omitted(password):
                         continue
-                    tracker.update_completed_items(counter)
-                    if counter % 128 == 0:
-                        tracker.update_estimation()
+                    tracker.update(counter)
                     sys.stdout.write(progress_prefix + str(tracker))
                     sys.stdout.flush()
                     counter += 1
